@@ -18,7 +18,7 @@ export class Client {
 
   public constructor(
     /** The client id to use for the connection */
-    clientId: string,
+    protected clientId: string,
 
     /** The secret to use for the connection. May be null if this is a front-end connection. */
     secret: string | null,
@@ -60,12 +60,59 @@ export class Client {
   }
 
   /**
+   * Create a user
+   */
+  public async createUser(
+    name: string,
+    email: string,
+    password: string,
+    passwordConf: string
+  ): Promise<void> {
+    // Log any existing session out
+    await this.logout();
+
+    // Now try to create the user
+    const state = this.generateLoginStateParam();
+    const res = await this.http.request<Api.Response>({
+      method: "post",
+      baseURL: this.baseUrl,
+      url: "/accounts/v1/users",
+      throwErrors: false,
+      headers: { Authorization: this.authBasic },
+      data: {
+        data: {
+          type: "users",
+          name,
+          email,
+          password,
+          state,
+          referrer: this.clientId,
+        },
+      },
+    });
+
+    // If we got an error, throw
+    if (res.data.t === "error") {
+      throw HttpError.withStatus(
+        res.status,
+        res.data.error.detail,
+        res.data.error.code || undefined,
+        res.data.error.obstructions
+      );
+    }
+
+    // Otherwise, we must have gotten a session. Store it and return success.
+    this.session = <Auth.Api.Authn.Session>res.data.data;
+    this.storage.setItem(this.storageKey, JSON.stringify(this.session));
+  }
+
+  /**
    * Takes the user's email and password and attempts to obtain a session token with it. If there is
    * already an active session, removes the session (live and stored) and replaces it with the new
    * one.
    */
   public async login(email: string, password: string): Promise<LoginResult> {
-    // Check to see if there's an existing session and log out, if so
+    // Log any existing session out
     await this.logout();
 
     // Now try to log in
@@ -132,20 +179,25 @@ export class Client {
     return { status: "success" };
   }
 
+  // RESUME: Implement 2fa method and then touch method
+
   /** Log out of a currently logged in session (if exists) */
-  public async logout(): Promise<true> {
+  public async logout(): Promise<void> {
+    this.log.debug(`Logging out`);
     if (this.session) {
       // Clear creds from storage
       this.storage.removeItem(this.storageKey);
 
       // Do the logout
+      this.log.debug(`Calling API for logout`);
       const res = await this.http.request<Api.Response>({
         method: "post",
         baseURL: this.baseUrl,
-        url: "/accounts/v1/session/logout",
+        url: "/accounts/v1/sessions/logout",
         throwErrors: false,
         headers: { Authorization: `${this.authBasic},Bearer ${this.session.token}` },
       });
+      this.log.debug(`Got response from logout endpoint`);
 
       // Throw on errors
       if (res.data.t === "error") {
@@ -162,23 +214,23 @@ export class Client {
       this.log.notice(`Logout successful`);
       this.log.debug(`Logout response string: ${JSON.stringify(res.data)}`);
     }
-
-    return true;
   }
 
   /** Accepts a string and returns the base64 representation of it */
   protected toBase64(str: string): string {
     if (Buffer as any) {
-      return (Buffer as any).fromString(str, "utf8").toString("base64");
+      return (Buffer as any).from(str, "utf8").toString("base64");
     } else {
       return (btoa as any)(str);
     }
   }
 
+  /** Generates a 32-character hex string for use as a "state" parameter in the login flow */
   protected generateLoginStateParam() {
     return [...Array(32)].map(() => Math.floor(Math.random() * 16).toString(16)).join("");
   }
 
+  /** Type-checks the credentials extracted from storage on instantiation */
   protected checkCreds(creds: any): creds is Auth.Api.Authn.Session {
     return (
       creds !== null &&

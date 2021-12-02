@@ -65,6 +65,10 @@ use types that are defined further below in the [Type Definitions](#type-definit
 
 ##### Session Management
 
+**`createUser(name: string, email: string, password: string, passwordConf: string): Promise<void>`** -
+Creates a new user, returning an active session for the created user (assuming the creation is
+successful).
+
 **`login(email: string, password: string): Promise<LoginResult>`** - Takes the user's email and
 password and attempts to obtain a session token with it.
 
@@ -72,7 +76,7 @@ password and attempts to obtain a session token with it.
 result with status `2fa`, then you should ask the user for a TOTP from their auth app and submit it
 via this method. This method should return either success or error (not another 2fa).
 
-**`logout(): Promise<true>`** - If the user is logged in, this submits a request to invalidate their
+**`logout(): Promise<void>`** - If the user is logged in, this submits a request to invalidate their
 current credentials and returns true. If we don't have any credentials saved, it simply returns true.
 
 **`touch(): Promise<boolean>`** - If the user is logged or their credentials are expired, returns
