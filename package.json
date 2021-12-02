@@ -1,0 +1,90 @@
+{
+  "name": "@luminous-money/client",
+  "version": "1.0.0-rc1",
+  "description": "The API client for the Luminous Money system",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "rm -Rf dist; npx -p typescript tsc",
+    "test": "jest",
+    "prepublishOnly": "rm -Rf dist; npx -p typescript tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://github.com:luminous-money/ts-client"
+  },
+  "keywords": [
+    "finance",
+    "budgeting",
+    "goals",
+    "api client"
+  ],
+  "author": "Kael Shipman",
+  "contributors": "Various Contributors (https://github.com/luminous-money/ts-client/graphs/contributors)",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/luminous-money/ts-client/issues"
+  },
+  "homepage": "https://github.com/luminous-money/ts-client#readme",
+  "dependencies": {
+    "@luminous-money/types": "^1.0.0-rc",
+    "@wymp/http-errors": "^1.8.0",
+    "@wymp/ts-simple-interfaces": "^0.5.3",
+    "@wymp/types": "^0.2.0-rc1"
+  },
+  "devDependencies": {
+    "@types/jest": "^27.0.2",
+    "@wymp/simple-http-client-rpn": "^0.5.2",
+    "@wymp/ts-simple-interfaces-testing": "^0.5.1",
+    "husky": "^6.0.0",
+    "jest": "^27.0.0",
+    "prettier": "^2.4.1",
+    "pretty-quick": "^3.1.1",
+    "ts-jest": "^27.0.0",
+    "ts-node": "^9.1.1",
+    "typescript": "^4.4.4"
+  },
+  "prettier": {
+    "printWidth": 100,
+    "trailingComma": "es5",
+    "arrowParens": "avoid"
+  },
+  "jest": {
+    "projects": [
+      {
+        "displayName": "unit-tests",
+        "testEnvironment": "node",
+        "verbose": true,
+        "testMatch": [
+          "<rootDir>/tests/**/*.spec.ts",
+          "!**/e2e.spec.ts"
+        ],
+        "transform": {
+          "^.+\\.tsx?$": "ts-jest"
+        },
+        "globals": {
+          "ts-jest": {
+            "tsconfig": "tsconfig.test.json"
+          }
+        }
+      },
+      {
+        "displayName": "e2e-tests",
+        "testEnvironment": "node",
+        "verbose": true,
+        "maxWorkers": 1,
+        "testMatch": [
+          "<rootDir>/tests/e2e.spec.ts"
+        ],
+        "transform": {
+          "^.+\\.tsx?$": "ts-jest"
+        },
+        "globals": {
+          "ts-jest": {
+            "tsconfig": "tsconfig.test.json"
+          }
+        }
+      }
+    ]
+  }
+}

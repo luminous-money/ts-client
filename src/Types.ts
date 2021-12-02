@@ -1,0 +1,39 @@
+import { HttpError } from "@wymp/http-errors";
+import { Api } from "@wymp/types";
+
+/**
+ * The result of a login attempt. This can be either "success", in which case the client can be
+ * understood to be "authenticated"; "error", in which case there was an error logging in; or "2fa",
+ * indicating that the user should be prompted for a 2fa TOTP.
+ */
+export type LoginResult =
+  | { status: "success" }
+  | { status: "2fa"; code: string }
+  | { status: "error"; error: HttpError };
+
+/**
+ * A `NextableResponse` is a packet of information that makes it easy to go back and forth through
+ * paged results. This "freezes" the request parameters that were originally used to make the request
+ * and uses them to make subsequent requests for next (and previous) pages.
+ */
+export type NextableResponse = {
+  endpoint: string;
+  params?: Api.Client.CollectionParams;
+  page: Api.NextPageParams;
+};
+
+/**
+ * The minimum interface required for credential storage. The user is left to decide what actual
+ * back end this uses, but it is assumed that it will be either `window.sessionStorage` or
+ * `window.localStorage` on the browser, and perhaps a cache or database on the server side.
+ */
+export interface StorageApi {
+  /** Get the item for the given key */
+  getItem(key: string): string | null;
+
+  /** Set the given value for the given key */
+  setItem(key: string, val: string): void;
+
+  /** Unset the value for the given key */
+  removeItem(key: string): void;
+}
