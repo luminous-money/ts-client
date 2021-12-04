@@ -1,7 +1,13 @@
 import { HttpError } from "@wymp/http-errors";
-import { SimpleHttpClientInterface, SimpleLoggerInterface } from "@wymp/ts-simple-interfaces";
+import {
+  HttpMethods,
+  SimpleHttpClientInterface,
+  SimpleHttpClientRequestConfig,
+  SimpleHttpClientResponseInterface,
+  SimpleLoggerInterface,
+} from "@wymp/ts-simple-interfaces";
 import { Auth, Api } from "@wymp/types";
-import { LoginResult, StorageApi } from "./Types";
+import { ErrorResult, LoginResult, StorageApi } from "./Types";
 
 /**
  * This is a typescript client for interacting with the Luminous Money APIs. It is a somewhat bare-
@@ -78,7 +84,10 @@ export class Client {
       baseURL: this.baseUrl,
       url: "/accounts/v1/users",
       throwErrors: false,
-      headers: { Authorization: this.authBasic },
+      headers: {
+        Authorization: this.authBasic,
+        "Content-Type": "application/json",
+      },
       data: {
         data: {
           type: "users",
@@ -93,17 +102,11 @@ export class Client {
 
     // If we got an error, throw
     if (res.data.t === "error") {
-      throw HttpError.withStatus(
-        res.status,
-        res.data.error.detail,
-        res.data.error.code || undefined,
-        res.data.error.obstructions
-      );
+      throw this.inflateError(res.data);
     }
 
     // Otherwise, we must have gotten a session. Store it and return success.
-    this.session = <Auth.Api.Authn.Session>res.data.data;
-    this.storage.setItem(this.storageKey, JSON.stringify(this.session));
+    this.storeSession(<Auth.Api.Authn.Session>res.data.data);
   }
 
   /**
@@ -122,7 +125,10 @@ export class Client {
       baseURL: this.baseUrl,
       url: "/accounts/v1/sessions/login/password",
       throwErrors: false,
-      headers: { Authorization: this.authBasic },
+      headers: {
+        Authorization: this.authBasic,
+        "Content-Type": "application/json",
+      },
       data: {
         data: {
           t: "password-step",
@@ -135,24 +141,11 @@ export class Client {
 
     // If we got an error....
     if (res.data.t === "error") {
-      const error = HttpError.withStatus(
-        res.status,
-        res.data.error.detail,
-        res.data.error.code || undefined,
-        res.data.error.obstructions
-      );
-
-      // If it was an auth error, return an error status
       if (res.status === 401) {
         this.log.warning(`Failed login. Response body: ${JSON.stringify(res.data)}`);
-        return {
-          status: "error",
-          error,
-        };
-      } else {
-        // For any other sort of error, throw
-        throw error;
+        return this.inflateError(res.data, "dressed");
       }
+      throw this.inflateError(res.data);
     }
 
     // Otherwise, if we got a step...
@@ -174,12 +167,60 @@ export class Client {
     }
 
     // Otherwise, we must have gotten a session. Store it and return success.
-    this.session = data;
-    this.storage.setItem(this.storageKey, JSON.stringify(this.session));
+    this.storeSession(data);
     return { status: "success" };
   }
 
-  // RESUME: Implement 2fa method and then touch method
+  /**
+   * Use a 32-character hex code (received from the `login` method) and a TOTP obtained from the
+   * user to execute the 2fa step of the login process. This _should_ return an active session or
+   * an error. The client will throw an error if some additional step is requested.
+   *
+   * Additionally, it should be noted that the 2fa flow is not well defined at the time of this
+   * writing, because 2fa is not yet implemented in the standard auth gateway.
+   */
+  public async totp(stateCode: string, totp: string): Promise<LoginResult> {
+    const res = await this.http.request<Api.Response>({
+      method: "post",
+      baseURL: this.baseUrl,
+      url: "/accounts/v1/sessions/login/totp",
+      throwErrors: false,
+      headers: {
+        Authorization: this.authBasic,
+        "Content-Type": "application/json",
+      },
+      data: {
+        data: {
+          t: "totp-step",
+          totp,
+          state: stateCode,
+        },
+      },
+    });
+
+    // If we got an error....
+    if (res.data.t === "error") {
+      if (res.status === 401) {
+        this.log.warning(`Failed totp step. Response body: ${JSON.stringify(res.data)}`);
+        return this.inflateError(res.data, "dressed");
+      }
+      throw this.inflateError(res.data);
+    }
+
+    // Otherwise, if we got a step, we need to throw on that, too, since we don't know how to
+    // handle it
+    const data = <Auth.Api.Authn.Session | Auth.Api.Authn.StepResponse>res.data.data;
+    if (data.t === "step") {
+      throw new Error(
+        `Error with Luminous API: Returned unexpected step '${data.step}' after 'totp' step, ` +
+          `which we don't know how to handle.`
+      );
+    }
+
+    // Otherwise, we must have gotten a session. Store it and return success.
+    this.storeSession(data);
+    return { status: "success" };
+  }
 
   /** Log out of a currently logged in session (if exists) */
   public async logout(): Promise<void> {
@@ -216,6 +257,136 @@ export class Client {
     }
   }
 
+  /** Perform a throw-away call to validate the session, if there is one */
+  public async loggedIn(): Promise<boolean> {
+    if (!this.session) {
+      return false;
+    }
+
+    const res = await this.call("get", "/accounts/v1/users/current");
+
+    if (res.status < 300) {
+      return true;
+    } else if (res.status === 401) {
+      return false;
+    } else {
+      throw this.inflateError(<Api.ErrorResponse>res.data);
+    }
+  }
+
+  /**
+   * Use the current session to make the given HTTP call to the API and return to the result. This
+   * method automatically tries to refresh the session if it receives a 401 for a given call. If
+   * the call still fails, the error is thrown.
+   */
+  protected async call<T = unknown>(
+    method: HttpMethods,
+    endpoint: string,
+    _req: SimpleHttpClientRequestConfig = {}
+  ): Promise<SimpleHttpClientResponseInterface<T | Api.ErrorResponse>> {
+    // Normalize any incoming authorization header and combine with existing auth info
+    const incomingAuth = Object.entries(_req.headers || {}).find(
+      e => e[0].toLowerCase() === "authorization"
+    );
+    if (incomingAuth && _req.headers) {
+      delete _req.headers[incomingAuth[0]];
+    }
+    const authHeader =
+      this.authBasic +
+      (incomingAuth && `,${incomingAuth[1]}`) +
+      (this.session && `,Bearer ${this.session.token}`);
+
+    // Also normalize the content-type header
+    const incomingContent = Object.entries(_req.headers || {}).find(
+      e => e[0].toLowerCase() === "content-type"
+    );
+    if (incomingContent && _req.headers) {
+      delete _req.headers[incomingContent[0]];
+    }
+    const contentHeader = (incomingContent && incomingContent[1]) || "application/json";
+
+    // Create final config for request
+    const req = {
+      ..._req,
+      method,
+      baseURL: this.baseUrl,
+      url: endpoint,
+      headers: {
+        ..._req.headers,
+        Authorization: authHeader,
+        "Content-Type": contentHeader,
+      },
+      throwErrors: false,
+    };
+
+    // Try the call
+    const res = await this.http.request<T | Api.ErrorResponse>(req);
+
+    // If we got a success response, if we don't have an active session, or if the error is not a
+    // 401, then return the response
+    if (res.status < 300 || !this.session || res.status !== 401) {
+      return res;
+    }
+
+    // Otherwise, try a refresh
+    const refresh = await this.refresh();
+
+    // If the refresh call didn't work, return the response
+    if (refresh !== true) {
+      return refresh;
+    }
+
+    // If the refresh call did work, then try the original call again with the new session and just
+    // return whatever the response is
+    req.headers.Authorization = authHeader.replace(/Bearer [^,]+/, `Bearer ${this.session.token}`);
+    return await this.http.request<T>(req);
+  }
+
+  /** Refresh an active session */
+  protected async refresh(): Promise<SimpleHttpClientResponseInterface<Api.ErrorResponse> | true> {
+    if (!this.session) {
+      throw HttpError.withStatus(
+        401,
+        "You must log in and obtain a session before attempting to refresh a session",
+        "LOG_IN"
+      );
+    }
+
+    const res = await this.http.request<
+      Api.SingleResponse<Auth.Api.Authn.Session> | Api.ErrorResponse
+    >({
+      method: "post",
+      baseURL: this.baseUrl,
+      url: "/accounts/v1/sessions/refresh",
+      headers: {
+        Authorization: this.authBasic,
+        "Content-Type": "application/json",
+      },
+      data: {
+        data: {
+          t: "refresh",
+          refreshToken: this.session.refresh,
+        },
+      },
+      throwErrors: false,
+    });
+
+    // If no errors, store the session and return true
+    if (res.data.t !== "error") {
+      this.storeSession(res.data.data);
+      return true;
+    }
+
+    // Otherwise, return the response
+    return <SimpleHttpClientResponseInterface<Api.ErrorResponse>>res;
+  }
+
+  /** Store a new session */
+  protected storeSession(data: Auth.Api.Authn.Session): void {
+    this.session = data;
+    this.storage.setItem(this.storageKey, JSON.stringify(this.session));
+  }
+
   /** Accepts a string and returns the base64 representation of it */
   protected toBase64(str: string): string {
     if (Buffer as any) {
@@ -239,5 +410,23 @@ export class Client {
       typeof creds.token === "string" &&
       typeof creds.refresh === "string"
     );
+  }
+
+  /** Inflate and optionally dress an error from an error HTTP response */
+  protected inflateError(res: Api.ErrorResponse): HttpError;
+  protected inflateError(res: Api.ErrorResponse, state: "raw"): HttpError;
+  protected inflateError(res: Api.ErrorResponse, state: "dressed"): ErrorResult;
+  protected inflateError(
+    res: Api.ErrorResponse,
+    state: "dressed" | "raw" = "raw"
+  ): HttpError | ErrorResult {
+    const error = HttpError.withStatus(
+      res.error.status,
+      res.error.detail,
+      res.error.code || undefined,
+      res.error.obstructions
+    );
+
+    return state === "raw" ? error : { status: "error", error };
   }
 }

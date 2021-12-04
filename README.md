@@ -35,8 +35,8 @@ that.
 There is a specific method for logging in (`login`) and a specific one for logging out (`logout`).
 These methods utilize storage (passed in on instantiation) to store credentials.
 
-There is additionally a `touch` method that allows you to easily determine if a user is logged in or
-not. This method simply makes a call to the `GET /accounts/v1/users/current` endpoint to judge
+There is additionally a `loggedIn` method that allows you to easily determine if a user is logged in
+or not. This method simply makes a call to the `GET /accounts/v1/users/current` endpoint to judge
 whether the current session (if existing) is live. It returns `Promise<boolean>`.
 
 Finally, since session tokens can expire somewhat frequently, the client makes the credential refresh
@@ -72,14 +72,14 @@ successful).
 **`login(email: string, password: string): Promise<LoginResult>`** - Takes the user's email and
 password and attempts to obtain a session token with it.
 
-**`2fa(code: string, totp: string): Promise<LoginResult>`** - If the `login` method returned a
+**`totp(code: string, totp: string): Promise<LoginResult>`** - If the `login` method returned a
 result with status `2fa`, then you should ask the user for a TOTP from their auth app and submit it
 via this method. This method should return either success or error (not another 2fa).
 
 **`logout(): Promise<void>`** - If the user is logged in, this submits a request to invalidate their
 current credentials and returns true. If we don't have any credentials saved, it simply returns true.
 
-**`touch(): Promise<boolean>`** - If the user is logged or their credentials are expired, returns
+**`loggedIn(): Promise<boolean>`** - If the user is logged or their credentials are expired, returns
 false. If they are logged in with valid credentials, returns true.
 
 

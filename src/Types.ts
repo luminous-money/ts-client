@@ -1,15 +1,15 @@
 import { HttpError } from "@wymp/http-errors";
 import { Api } from "@wymp/types";
 
+/** A simple type indicating an error */
+export type ErrorResult = { status: "error"; error: HttpError };
+
 /**
  * The result of a login attempt. This can be either "success", in which case the client can be
  * understood to be "authenticated"; "error", in which case there was an error logging in; or "2fa",
  * indicating that the user should be prompted for a 2fa TOTP.
  */
-export type LoginResult =
-  | { status: "success" }
-  | { status: "2fa"; code: string }
-  | { status: "error"; error: HttpError };
+export type LoginResult = { status: "success" } | { status: "2fa"; code: string } | ErrorResult;
 
 /**
  * A `NextableResponse` is a packet of information that makes it easy to go back and forth through
