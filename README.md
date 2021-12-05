@@ -85,13 +85,13 @@ false. If they are logged in with valid credentials, returns true.
 
 ##### Data Methods
 
-**`get<T>(endpoint: string, params?: Api.Client.CollectionParams): Promise<Api.Response<T>>`** - Get
+**`get<T>(endpoint: string, params?: Api.Client.CollectionParams): Promise<Exclude<Api.Response<T>, Api.ErrorResponse>>`** - Get
 data from the API for the given endpoint and with the given parameters.
 
-**`post<T>(endpoint: string, data?: { data: T }): Promise<Api.Response<T>>`** - Create the
+**`post<T>(endpoint: string, data?: { data: T }): Promise<Api.SingleResponse<T>>`** - Create the
 given object at the given endpoint.
 
-**`patch<T>(endpoint: string, data: { data: Partial<T> }): Promise<Api.Response>`** - Update the
+**`patch<T>(endpoint: string, data: { data: Partial<T> }): Promise<Api.SingleResponse<T>>`** - Update the
 given object.
 
 **`delete(endpoint: string): Promise<Api.NullResponse>`** - Delete the given object. (Note that not all
@@ -127,9 +127,10 @@ export type LoginResult =
   | { status: "2fa"; code: string }
   | { status: "error"; error: HttpError };
 
-export type NextableResponse = {
+export type NextableResponse<T = unknown> = {
   endpoint: string;
   params?: Api.Client.CollectionParams;
+  response: Exclude<Api.Response<T>, Api.ErrorResponse>;
   page: Api.NextPageParams;
 }
 ```

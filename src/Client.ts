@@ -282,10 +282,28 @@ export class Client {
     const res = await this.call<T>("get", endpoint, {
       params: params ? this.condenseParams(params) : {},
     });
-    if (res.data.t === "error") {
-      throw this.inflateError(res.data);
+    const data = res.data;
+    if (data.t === "error") {
+      throw this.inflateError(data);
     } else {
-      return res.data;
+      return data;
+    }
+  }
+
+  /** post data to the API */
+  public async post<T>(
+    endpoint: string,
+    data?: Partial<T>
+  ): Promise<Exclude<Api.Response<T>, Api.ErrorResponse>> {
+    const res = await this.call<T>("post", endpoint, data && { data: { data } });
+    const resData = res.data;
+    if (resData.t === "error") {
+      throw this.inflateError(resData);
+    } else {
+      if (resData.t === "collection" || resData.t === "null") {
+        throw new Error(`Unexpected response type from API: '${resData.t}'. Expecting 'single'.`);
+      }
+      return resData;
     }
   }
 

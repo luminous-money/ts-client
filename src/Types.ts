@@ -16,9 +16,10 @@ export type LoginResult = { status: "success" } | { status: "2fa"; code: string 
  * paged results. This "freezes" the request parameters that were originally used to make the request
  * and uses them to make subsequent requests for next (and previous) pages.
  */
-export type NextableResponse = {
+export type NextableResponse<T = unknown> = {
   endpoint: string;
   params?: Api.Client.CollectionParams;
+  response: Exclude<Api.Response<T>, Api.ErrorResponse>;
   page: Api.NextPageParams;
 };
 

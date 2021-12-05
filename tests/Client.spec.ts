@@ -1,7 +1,14 @@
 import { HttpMethods } from "@wymp/ts-simple-interfaces";
 import { MockSimpleLogger, MockSimpleHttpClient } from "@wymp/ts-simple-interfaces-testing";
+import { Auth } from "@wymp/types";
 import { Client } from "../src";
 import { MockStorage } from "./MockStorage";
+
+enum UserRoles {
+  EndUser = "END_USER",
+  Employee = "EMPLOYEE",
+  SysAdmin = "SYSADMIN",
+}
 
 describe("Client", () => {
   let log: MockSimpleLogger;
@@ -53,6 +60,21 @@ describe("Client", () => {
         detail: "Something went wrong",
         obstructions: [],
         ...(vals || {}),
+      },
+    },
+  });
+
+  const UserRes = (status: number = 200, vals?: Partial<Auth.Api.User<UserRoles>>) => ({
+    status,
+    headers: {},
+    config: {},
+    data: {
+      t: "single",
+      data: {
+        type: "users" as const,
+        id: "abcde12345",
+        name: "Jim Chavo",
+        ...vals,
       },
     },
   });
@@ -465,6 +487,7 @@ describe("Client", () => {
     describe("Session Auto-Refresh", () => {
       const params: Array<[HttpMethods, Function]> = [
         ["get", (c: Client) => c.get("/accounts/v1/users/current")],
+        ["post", (c: Client) => c.post("/accounts/v1/users/current")],
       ];
       for (const [method, call] of params) {
         test(`'${method}' method returns success when session token is invalid but refresh token is valid`, async () => {
@@ -489,19 +512,10 @@ describe("Client", () => {
           });
 
           // Set the final successful response
-          http.setNextResponse(`${method} https://example.com/accounts/v1/users/current`, {
-            status: 200,
-            headers: {},
-            config: {},
-            data: {
-              t: "single",
-              data: {
-                type: "users",
-                id: "abcde12345",
-                // ....
-              },
-            },
-          });
+          http.setNextResponse(
+            `${method} https://example.com/accounts/v1/users/current`,
+            UserRes()
+          );
 
           // Verify that the call returns true
           await expect(call(client)).resolves.toBeDefined();
@@ -561,6 +575,43 @@ describe("Client", () => {
           await expect(call(client)).rejects.toThrow("Something went wrong");
         });
       }
+    });
+
+    describe("get", () => {
+      // Set credentials before each test
+      beforeEach(() => {
+        (client as any).session = { ...creds };
+      });
+
+      test("returns a response", async () => {
+        // Set the auth error response
+        const userRes = UserRes();
+        http.setNextResponse(`get https://example.com/accounts/v1/users/current`, userRes);
+
+        // get and verify response
+        const res = await client.get<Auth.Api.User<UserRoles>>("/accounts/v1/users/current");
+        expect(res).toMatchObject(userRes.data);
+      });
+    });
+
+    describe("post", () => {
+      // Set credentials before each test
+      beforeEach(() => {
+        (client as any).session = { ...creds };
+      });
+
+      test("returns a response", async () => {
+        // Set the auth error response
+        const userRes = UserRes(201);
+        http.setNextResponse(`post https://example.com/accounts/v1/users`, userRes);
+
+        // post and verify response
+        const res = await client.post<Auth.Api.User<UserRoles>>(
+          "/accounts/v1/users",
+          userRes.data.data
+        );
+        expect(res).toMatchObject(userRes.data);
+      });
     });
   });
 });
