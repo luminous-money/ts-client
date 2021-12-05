@@ -7,7 +7,7 @@ import {
   SimpleLoggerInterface,
 } from "@wymp/ts-simple-interfaces";
 import { Auth, Api } from "@wymp/types";
-import { ErrorResult, LoginResult, StorageApi } from "./Types";
+import { ErrorResult, LoginResult, NextableResponse, StorageApi } from "./Types";
 
 /**
  * This is a typescript client for interacting with the Luminous Money APIs. It is a somewhat bare-
@@ -358,6 +358,65 @@ export class Client {
     } else {
       return resData;
     }
+  }
+
+  /**
+   * This is just like the `get` method, except it is meant to be used for paginated collection
+   * responses, and it allows you to pass in the response in order to get the next page of results
+   * for the same parameters.
+   *
+   * Note that you can also use it to get an _initial_ page of responses, just like the `get` method.
+   */
+  public async next<T>(
+    endpoint: string,
+    params?: Api.Client.CollectionParams
+  ): Promise<NextableResponse<T> | null>;
+  public async next<T>(nextable: NextableResponse<T>): Promise<NextableResponse<T> | null>;
+  public async next<T>(
+    endpointOrNextable: string | NextableResponse<T>,
+    _params?: Api.Client.CollectionParams
+  ): Promise<NextableResponse<T> | null> {
+    // Get the endpoint and params
+    const endpoint =
+      typeof endpointOrNextable === "string" ? endpointOrNextable : endpointOrNextable.endpoint;
+    const params =
+      (typeof endpointOrNextable === "string" ? _params : endpointOrNextable.params) || {};
+
+    // If we passed a NextableResponse, then we need to adjust the parameters to get the next page
+    if (typeof endpointOrNextable !== "string") {
+      const nextable = endpointOrNextable;
+      const cursor = nextable.response.meta.pg.nextCursor;
+
+      // If there is no next cursor, just return null, since there are no additional pages
+      if (!cursor) {
+        return null;
+      }
+
+      // Otherwise, set the page parameters
+      params.pg = {
+        size: nextable.response.meta.pg.size,
+        cursor,
+      };
+
+      // Add in sort, if applicable
+      if (nextable.response.meta.pg.sort) {
+        params.sort = nextable.response.meta.pg.sort;
+      }
+    }
+
+    // Now make the call and return the result
+    const res = await this.get<T>(endpoint, params);
+    if (res.t !== "collection") {
+      throw new Error(
+        `The 'next' method is only meant to handle collection responses. The call 'GET ` +
+          `${endpointOrNextable}' returned a '${res.t}' response.`
+      );
+    }
+    return {
+      endpoint,
+      params,
+      response: res,
+    };
   }
 
   /**

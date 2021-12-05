@@ -1,6 +1,6 @@
-import { HttpMethods } from "@wymp/ts-simple-interfaces";
+import { HttpMethods, SimpleHttpClientResponseInterface } from "@wymp/ts-simple-interfaces";
 import { MockSimpleLogger, MockSimpleHttpClient } from "@wymp/ts-simple-interfaces-testing";
-import { Auth } from "@wymp/types";
+import { Auth, Api } from "@wymp/types";
 import { Client } from "../src";
 import { MockStorage } from "./MockStorage";
 
@@ -78,6 +78,29 @@ describe("Client", () => {
       }),
     },
   });
+
+  const UserCollRes = (vals?: Partial<Auth.Api.User<UserRoles>>) =>
+    <SimpleHttpClientResponseInterface<Api.CollectionResponse<Auth.Api.User<UserRoles>>>>{
+      status: 200,
+      headers: {},
+      config: {},
+      data: {
+        t: "collection",
+        data: [<Auth.Api.User<UserRoles>>(<any>{
+            type: "users" as const,
+            id: "abcde12345",
+            name: "Jim Chavo",
+            ...vals,
+          })],
+        meta: {
+          pg: {
+            size: 25,
+            nextCursor: "2",
+            prevCursor: null,
+          },
+        },
+      },
+    };
 
   describe("Construction", () => {
     test("gets credentials out of storage on instantiation", () => {
@@ -586,7 +609,7 @@ describe("Client", () => {
       });
 
       test("returns a response", async () => {
-        // Set the auth error response
+        // Set the response
         const userRes = UserRes();
         http.setNextResponse(`get https://example.com/accounts/v1/users/current`, userRes);
 
@@ -603,7 +626,7 @@ describe("Client", () => {
       });
 
       test("returns a response", async () => {
-        // Set the auth error response
+        // Set the response
         const userRes = UserRes(201);
         http.setNextResponse(`post https://example.com/accounts/v1/users`, userRes);
 
@@ -623,7 +646,7 @@ describe("Client", () => {
       });
 
       test("returns a response", async () => {
-        // Set the auth error response
+        // Set the response
         const userRes = UserRes();
         http.setNextResponse(`patch https://example.com/accounts/v1/users/current`, userRes);
 
@@ -643,7 +666,7 @@ describe("Client", () => {
       });
 
       test("returns a response", async () => {
-        // Set the auth error response
+        // Set the response
         http.setNextResponse(`delete https://example.com/accounts/v1/users/current`, {
           status: 200,
           headers: {},
@@ -655,6 +678,78 @@ describe("Client", () => {
         const res = await client.delete("/accounts/v1/users/current");
         expect(res).toMatchObject({ t: "null", data: null });
       });
+    });
+
+    describe("next", () => {
+      // Set credentials before each test
+      beforeEach(() => {
+        (client as any).session = { ...creds };
+      });
+
+      test("response successfully chains", async () => {
+        // Set the response
+        let userRes = UserCollRes();
+        http.setNextResponse(`get https://example.com/accounts/v1/users`, userRes);
+
+        // make the request, then verify the request and response
+        let nextable = await client.next<Auth.Api.User<UserRoles>>("/accounts/v1/users");
+        // shouldn't have sent a pagination parameter this time
+        expect(http.requestLog[0]?.params!["pg[cursor]"]).not.toBeDefined();
+        // verify that we returned a collection and that it had a nextCursor defined
+        expect(nextable?.response.t).toBe("collection");
+        expect(nextable?.response.meta?.pg?.nextCursor).toBe("2");
+
+        // Update response and get the next response
+        userRes = UserCollRes();
+        userRes.data.meta.pg.nextCursor = "3";
+        userRes.data.meta.pg.prevCursor = "1";
+        http.setNextResponse(`get https://example.com/accounts/v1/users`, userRes);
+        nextable = await client.next<Auth.Api.User<UserRoles>>(nextable!);
+
+        // verify the request parameters
+        expect(http.requestLog[1]?.params!["pg[cursor]"]).toBe("2");
+        expect(http.requestLog[1]?.params!["pg[size]"]).toBe(25);
+        expect(nextable?.response.t).toBe("collection");
+        expect(nextable?.response.meta?.pg?.nextCursor).toBe("3");
+        expect(nextable?.response.meta?.pg?.prevCursor).toBe("1");
+
+        // Update response and get the next response
+        userRes = UserCollRes();
+        userRes.data.meta.pg.nextCursor = null;
+        userRes.data.meta.pg.prevCursor = "2";
+        http.setNextResponse(`get https://example.com/accounts/v1/users`, userRes);
+        nextable = await client.next<Auth.Api.User<UserRoles>>(nextable!);
+
+        // verify the request parameters
+        expect(http.requestLog[2]?.params!["pg[cursor]"]).toBe("3");
+        expect(http.requestLog[2]?.params!["pg[size]"]).toBe(25);
+        expect(nextable?.response.t).toBe("collection");
+        expect(nextable?.response.meta?.pg?.nextCursor).toBe(null);
+        expect(nextable?.response.meta?.pg?.prevCursor).toBe("2");
+      });
+
+      test("returns null when no more pages left", async () => {
+        // Set the response
+        let userRes = UserCollRes();
+        userRes.data.meta.pg.nextCursor = null;
+        userRes.data.meta.pg.prevCursor = null;
+        http.setNextResponse(`get https://example.com/accounts/v1/users`, userRes);
+
+        // make the request, then verify the request and response
+        let nextable = await client.next<Auth.Api.User<UserRoles>>("/accounts/v1/users");
+        // shouldn't have sent a pagination parameter this time
+        expect(http.requestLog[0]?.params!["pg[cursor]"]).not.toBeDefined();
+        // verify that we returned a collection and that it had a nextCursor defined
+        expect(nextable?.response.t).toBe("collection");
+        expect(nextable?.response.meta?.pg?.nextCursor).toBe(null);
+
+        // Update response and get the next response
+        nextable = await client.next<Auth.Api.User<UserRoles>>(nextable!);
+        expect(nextable).toBe(null);
+      });
+
+      test.todo("preserves passed-in parameters across runs");
+      test.todo("successfully merges next params into passed-in page params");
     });
   });
 });

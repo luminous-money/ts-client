@@ -97,14 +97,14 @@ given object.
 **`delete(endpoint: string): Promise<Api.NullResponse>`** - Delete the given object. (Note that not all
 objects are deletable.)
 
-**`next<T>(endpoint: string, params?: Api.Client.CollectionParams): Promise<NextableResponse<T>>`**<br>
-**`next<T>(params: NextableResponse<T>): Promise<NextableResponse<T>>`** - A method that can be used
+**`next<T>(endpoint: string, params?: Api.Client.CollectionParams): Promise<NextableResponse<T> | null>`**<br>
+**`next<T>(params: NextableResponse<T>): Promise<NextableResponse<T> | null>`** - A method that can be used
 to get an initial result set in a format that can be passed directly to the same method to get the
 next page. Note that the result of this call may also be used in the `prev` method to get the
 previous page of results.
 
-**`prev<T>(endpoint: string, params?: Api.Client.CollectionParams): Promise<NextableResponse<T>>`**<br>
-**`prev<T>(params: NextableResponse<T>): Promise<NextableResponse<T>>`** - A method that can be used
+**`prev<T>(endpoint: string, params?: Api.Client.CollectionParams): Promise<NextableResponse<T> | null>`**<br>
+**`prev<T>(params: NextableResponse<T>): Promise<NextableResponse<T> | null>`** - A method that can be used
 to get an initial result set in a format that can be passed directly to the same method to get the
 previous page. Note that the result of this call may also be used in the `next` method to get the
 next page of results.
@@ -130,8 +130,7 @@ export type LoginResult =
 export type NextableResponse<T = unknown> = {
   endpoint: string;
   params?: Api.Client.CollectionParams;
-  response: Exclude<Api.Response<T>, Api.ErrorResponse>;
-  page: Api.NextPageParams;
+  response: Api.CollectionResponse<T>;
 }
 ```
 

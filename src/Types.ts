@@ -19,8 +19,7 @@ export type LoginResult = { status: "success" } | { status: "2fa"; code: string 
 export type NextableResponse<T = unknown> = {
   endpoint: string;
   params?: Api.Client.CollectionParams;
-  response: Exclude<Api.Response<T>, Api.ErrorResponse>;
-  page: Api.NextPageParams;
+  response: Api.CollectionResponse<T>;
 };
 
 /**
