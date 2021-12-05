@@ -109,9 +109,9 @@ to get an initial result set in a format that can be passed directly to the same
 previous page. Note that the result of this call may also be used in the `next` method to get the
 next page of results.
 
-**`findIncluded<T>(result: Api.CollectionResponse, spec: { id: string }): T`**<br>
-**`findIncluded<T>(result: Api.CollectionResponse, spec: { type: string }): Array<T>`**<br>
-**`findIncluded<T>(result: Api.CollectionResponse, spec: { id: string; type: string }): T`** -
+**`findIncluded<T>(inc: Included, spec: { id: string }): T`**<br>
+**`findIncluded<T>(inc: Included, spec: { type: string }): Array<T>`**<br>
+**`findIncluded<T>(inc: Included, spec: { id: string; type: string }): T`** -
 Attempt to find object(s) meeting the given spec within the `included` array of the given collection
 response.
 
@@ -132,6 +132,8 @@ export type NextableResponse<T = unknown> = {
   params?: Api.Client.CollectionParams;
   response: Api.CollectionResponse<T>;
 }
+
+export type Included = undefined | Array<{ id: string; type: string }>;
 ```
 
 ## Dependencies

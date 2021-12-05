@@ -751,5 +751,132 @@ describe("Client", () => {
       test.todo("preserves passed-in parameters across runs");
       test.todo("successfully merges next params into passed-in page params");
     });
+
+    describe("prev", () => {
+      // Set credentials before each test
+      beforeEach(() => {
+        (client as any).session = { ...creds };
+      });
+
+      test("response successfully chains", async () => {
+        // Set the response
+        let userRes = UserCollRes();
+        userRes.data.meta.pg.nextCursor = "4";
+        userRes.data.meta.pg.prevCursor = "2";
+        http.setNextResponse(`get https://example.com/accounts/v1/users`, userRes);
+
+        // make the request, then verify the request and response
+        let nextable = await client.prev<Auth.Api.User<UserRoles>>("/accounts/v1/users");
+        // shouldn't have sent a pagination parameter this time
+        expect(http.requestLog[0]?.params!["pg[cursor]"]).not.toBeDefined();
+        // verify that we returned a collection and that it had a nextCursor defined
+        expect(nextable?.response.t).toBe("collection");
+        expect(nextable?.response.meta?.pg?.prevCursor).toBe("2");
+
+        // Update response and get the next response
+        userRes = UserCollRes();
+        userRes.data.meta.pg.nextCursor = "3";
+        userRes.data.meta.pg.prevCursor = "1";
+        http.setNextResponse(`get https://example.com/accounts/v1/users`, userRes);
+        nextable = await client.prev<Auth.Api.User<UserRoles>>(nextable!);
+
+        // verify the request parameters
+        expect(http.requestLog[1]?.params!["pg[cursor]"]).toBe("2");
+        expect(http.requestLog[1]?.params!["pg[size]"]).toBe(25);
+        expect(nextable?.response.t).toBe("collection");
+        expect(nextable?.response.meta?.pg?.nextCursor).toBe("3");
+        expect(nextable?.response.meta?.pg?.prevCursor).toBe("1");
+
+        // Update response and get the next response
+        userRes = UserCollRes();
+        userRes.data.meta.pg.nextCursor = "2";
+        userRes.data.meta.pg.prevCursor = null;
+        http.setNextResponse(`get https://example.com/accounts/v1/users`, userRes);
+        nextable = await client.prev<Auth.Api.User<UserRoles>>(nextable!);
+
+        // verify the request parameters
+        expect(http.requestLog[2]?.params!["pg[cursor]"]).toBe("1");
+        expect(http.requestLog[2]?.params!["pg[size]"]).toBe(25);
+        expect(nextable?.response.t).toBe("collection");
+        expect(nextable?.response.meta?.pg?.nextCursor).toBe("2");
+        expect(nextable?.response.meta?.pg?.prevCursor).toBe(null);
+      });
+
+      test("returns null when no more pages left", async () => {
+        // Set the response
+        let userRes = UserCollRes();
+        userRes.data.meta.pg.nextCursor = null;
+        userRes.data.meta.pg.prevCursor = null;
+        http.setNextResponse(`get https://example.com/accounts/v1/users`, userRes);
+
+        // make the request, then verify the request and response
+        let nextable = await client.prev<Auth.Api.User<UserRoles>>("/accounts/v1/users");
+        // shouldn't have sent a pagination parameter this time
+        expect(http.requestLog[0]?.params!["pg[cursor]"]).not.toBeDefined();
+        // verify that we returned a collection and that it had a nextCursor defined
+        expect(nextable?.response.t).toBe("collection");
+        expect(nextable?.response.meta?.pg?.prevCursor).toBe(null);
+
+        // Update response and get the next response
+        nextable = await client.prev<Auth.Api.User<UserRoles>>(nextable!);
+        expect(nextable).toBe(null);
+      });
+
+      test.todo("preserves passed-in parameters across runs");
+      test.todo("successfully merges next params into passed-in page params");
+    });
+
+    describe("findIncluded", () => {
+      const inc: Array<{ id: string; type: string }> = [
+        {
+          id: "aaaaa",
+          type: "users",
+        },
+        {
+          id: "bbbbb",
+          type: "users",
+        },
+        {
+          id: "ccccc",
+          type: "users",
+        },
+        {
+          id: "aaaaa",
+          type: "pets",
+        },
+        {
+          id: "ddddd",
+          type: "pets",
+        },
+        {
+          id: "eeeee",
+          type: "pets",
+        },
+      ];
+
+      test("can find included by id, type, or both", () => {
+        // id
+        const obj = client.findIncluded(inc, { id: "aaaaa" });
+        expect(obj).toBeDefined();
+        expect(obj!.id).toBe("aaaaa");
+        expect(obj!.type).toBe("users");
+
+        // type
+        const arr = client.findIncluded(inc, { type: "users" });
+        expect(arr).toBeDefined();
+        expect(Array.isArray(arr)).toBe(true);
+        expect(arr).toHaveLength(3);
+
+        // type and id
+        const obj2 = client.findIncluded(inc, { id: "aaaaa", type: "pets" });
+        expect(obj2).toBeDefined();
+        expect(obj2!.id).toBe("aaaaa");
+        expect(obj2!.type).toBe("pets");
+      });
+
+      test("returns undefined when given undefined", () => {
+        expect(client.findIncluded(undefined, { id: "aaaaa" })).not.toBeDefined();
+      });
+    });
   });
 });

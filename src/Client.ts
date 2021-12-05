@@ -7,7 +7,7 @@ import {
   SimpleLoggerInterface,
 } from "@wymp/ts-simple-interfaces";
 import { Auth, Api } from "@wymp/types";
-import { ErrorResult, LoginResult, NextableResponse, StorageApi } from "./Types";
+import { ErrorResult, Included, LoginResult, NextableResponse, StorageApi } from "./Types";
 
 /**
  * This is a typescript client for interacting with the Luminous Money APIs. It is a somewhat bare-
@@ -367,14 +367,111 @@ export class Client {
    *
    * Note that you can also use it to get an _initial_ page of responses, just like the `get` method.
    */
-  public async next<T>(
+  public next<T>(
     endpoint: string,
     params?: Api.Client.CollectionParams
   ): Promise<NextableResponse<T> | null>;
-  public async next<T>(nextable: NextableResponse<T>): Promise<NextableResponse<T> | null>;
-  public async next<T>(
+  public next<T>(nextable: NextableResponse<T>): Promise<NextableResponse<T> | null>;
+  public next<T>(
     endpointOrNextable: string | NextableResponse<T>,
     _params?: Api.Client.CollectionParams
+  ): Promise<NextableResponse<T> | null> {
+    return typeof endpointOrNextable === "string"
+      ? this.nextOrPrev<T>(endpointOrNextable, _params, "nextCursor")
+      : this.nextOrPrev<T>(endpointOrNextable, undefined, "nextCursor");
+  }
+
+  /**
+   * This is just like the `get` method, except it is meant to be used for paginated collection
+   * responses, and it allows you to pass in the response in order to get the previous page of
+   * results for the same parameters.
+   *
+   * Note that you can also use it to get an _initial_ page of responses, just like the `get` method.
+   */
+  public async prev<T>(
+    endpoint: string,
+    params?: Api.Client.CollectionParams
+  ): Promise<NextableResponse<T> | null>;
+  public async prev<T>(nextable: NextableResponse<T>): Promise<NextableResponse<T> | null>;
+  public async prev<T>(
+    endpointOrNextable: string | NextableResponse<T>,
+    _params?: Api.Client.CollectionParams
+  ): Promise<NextableResponse<T> | null> {
+    return typeof endpointOrNextable === "string"
+      ? this.nextOrPrev<T>(endpointOrNextable, _params, "prevCursor")
+      : this.nextOrPrev<T>(endpointOrNextable, undefined, "prevCursor");
+  }
+
+  /**
+   * This method is a convenience method used to find data objects of a certain type and/or id
+   * within a collection response.
+   */
+  public findIncluded<T extends { id: string; type: string }>(
+    inc: Included,
+    spec: { id: string }
+  ): T | undefined;
+  public findIncluded<T extends { id: string; type: string }>(
+    inc: Included,
+    spec: { type: string }
+  ): Array<T>;
+  public findIncluded<T extends { id: string; type: string }>(
+    inc: Included,
+    spec: { id: string; type: string }
+  ): T | undefined;
+  public findIncluded<T extends { id: string; type: string }>(
+    inc: Included,
+    spec: { id?: string; type?: string }
+  ): T | undefined {
+    // If nothing included, just return
+    if (!inc) {
+      return undefined;
+    }
+
+    // Otherwise, filter the collection for possible matches
+    const result = inc.filter(obj => {
+      if (spec.id && spec.type) {
+        return spec.id === obj.id && spec.type === obj.type;
+      }
+      if (spec.id) {
+        return spec.id === obj.id;
+      }
+      if (spec.type) {
+        return spec.type === obj.type;
+      }
+      return false;
+    });
+
+    // And return according to input
+    return <T | undefined>(spec.id ? result[0] : result);
+  }
+
+  /**
+   *
+   *
+   *
+   *
+   * Internal methods
+   *
+   *
+   *
+   *
+   */
+
+  /** Internal method facilitating a call for the next or previous response */
+  protected async nextOrPrev<T>(
+    endpoint: string,
+    params: Api.Client.CollectionParams | undefined,
+    cursorParam: "nextCursor" | "prevCursor"
+  ): Promise<NextableResponse<T> | null>;
+  protected async nextOrPrev<T>(
+    nextable: NextableResponse<T>,
+    params: undefined,
+    cursorParam: "nextCursor" | "prevCursor"
+  ): Promise<NextableResponse<T> | null>;
+  protected async nextOrPrev<T>(
+    endpointOrNextable: string | NextableResponse<T>,
+    _params: Api.Client.CollectionParams | undefined,
+    cursorParam: "nextCursor" | "prevCursor"
   ): Promise<NextableResponse<T> | null> {
     // Get the endpoint and params
     const endpoint =
@@ -385,7 +482,7 @@ export class Client {
     // If we passed a NextableResponse, then we need to adjust the parameters to get the next page
     if (typeof endpointOrNextable !== "string") {
       const nextable = endpointOrNextable;
-      const cursor = nextable.response.meta.pg.nextCursor;
+      const cursor = nextable.response.meta.pg[cursorParam];
 
       // If there is no next cursor, just return null, since there are no additional pages
       if (!cursor) {
@@ -418,18 +515,6 @@ export class Client {
       response: res,
     };
   }
-
-  /**
-   *
-   *
-   *
-   *
-   * Internal methods
-   *
-   *
-   *
-   *
-   */
 
   /**
    * Use the current session to make the given HTTP call to the API and return to the result. This

@@ -23,6 +23,11 @@ export type NextableResponse<T = unknown> = {
 };
 
 /**
+ * A simple definition for the `included` param of a response
+ */
+export type Included = undefined | Array<{ id: string; type: string }>;
+
+/**
  * The minimum interface required for credential storage. The user is left to decide what actual
  * back end this uses, but it is assumed that it will be either `window.sessionStorage` or
  * `window.localStorage` on the browser, and perhaps a cache or database on the server side.
