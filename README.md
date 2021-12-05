@@ -88,10 +88,10 @@ false. If they are logged in with valid credentials, returns true.
 **`get<T>(endpoint: string, params?: Api.Client.CollectionParams): Promise<Exclude<Api.Response<T>, Api.ErrorResponse>>`** - Get
 data from the API for the given endpoint and with the given parameters.
 
-**`post<T>(endpoint: string, data?: { data: T }): Promise<Api.SingleResponse<T>>`** - Create the
+**`post<T, I = T>(endpoint: string, data?: I): Promise<Api.SingleResponse<T>>`** - Create the
 given object at the given endpoint.
 
-**`patch<T>(endpoint: string, data: { data: Partial<T> }): Promise<Api.SingleResponse<T>>`** - Update the
+**`patch<T, I = T>(endpoint: string, data: Partial<I>): Promise<Api.SingleResponse<T>>`** - Update the
 given object.
 
 **`delete(endpoint: string): Promise<Api.NullResponse>`** - Delete the given object. (Note that not all

@@ -66,6 +66,19 @@ export class Client {
   }
 
   /**
+   *
+   *
+   *
+   *
+   *
+   * Session Management
+   *
+   *
+   *
+   *
+   */
+
+  /**
    * Create a user
    */
   public async createUser(
@@ -274,6 +287,18 @@ export class Client {
     }
   }
 
+  /**
+   *
+   *
+   *
+   *
+   * Data methods
+   *
+   *
+   *
+   *
+   */
+
   /** get an API result */
   public async get<T>(
     endpoint: string,
@@ -291,9 +316,9 @@ export class Client {
   }
 
   /** post data to the API */
-  public async post<T>(
+  public async post<T, I = T>(
     endpoint: string,
-    data?: Partial<T>
+    data?: I
   ): Promise<Exclude<Api.Response<T>, Api.ErrorResponse>> {
     const res = await this.call<T>("post", endpoint, data && { data: { data } });
     const resData = res.data;
@@ -306,6 +331,46 @@ export class Client {
       return resData;
     }
   }
+
+  /** update data in the API */
+  public async patch<T, I = T>(
+    endpoint: string,
+    data: Partial<I>
+  ): Promise<Exclude<Api.Response<T>, Api.ErrorResponse>> {
+    const res = await this.call<T>("patch", endpoint, { data: { data } });
+    const resData = res.data;
+    if (resData.t === "error") {
+      throw this.inflateError(resData);
+    } else {
+      if (resData.t === "collection" || resData.t === "null") {
+        throw new Error(`Unexpected response type from API: '${resData.t}'. Expecting 'single'.`);
+      }
+      return resData;
+    }
+  }
+
+  /** delete data in the API */
+  public async delete<T>(endpoint: string): Promise<Api.Response<T>> {
+    const res = await this.call<T>("delete", endpoint);
+    const resData = res.data;
+    if (resData.t === "error") {
+      throw this.inflateError(resData);
+    } else {
+      return resData;
+    }
+  }
+
+  /**
+   *
+   *
+   *
+   *
+   * Internal methods
+   *
+   *
+   *
+   *
+   */
 
   /**
    * Use the current session to make the given HTTP call to the API and return to the result. This

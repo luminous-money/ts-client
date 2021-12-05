@@ -70,12 +70,12 @@ describe("Client", () => {
     config: {},
     data: {
       t: "single",
-      data: {
+      data: <Auth.Api.User<UserRoles>>(<any>{
         type: "users" as const,
         id: "abcde12345",
         name: "Jim Chavo",
         ...vals,
-      },
+      }),
     },
   });
 
@@ -488,6 +488,8 @@ describe("Client", () => {
       const params: Array<[HttpMethods, Function]> = [
         ["get", (c: Client) => c.get("/accounts/v1/users/current")],
         ["post", (c: Client) => c.post("/accounts/v1/users/current")],
+        ["patch", (c: Client) => c.patch("/accounts/v1/users/current", {})],
+        ["delete", (c: Client) => c.delete("/accounts/v1/users/current")],
       ];
       for (const [method, call] of params) {
         test(`'${method}' method returns success when session token is invalid but refresh token is valid`, async () => {
@@ -611,6 +613,47 @@ describe("Client", () => {
           userRes.data.data
         );
         expect(res).toMatchObject(userRes.data);
+      });
+    });
+
+    describe("patch", () => {
+      // Set credentials before each test
+      beforeEach(() => {
+        (client as any).session = { ...creds };
+      });
+
+      test("returns a response", async () => {
+        // Set the auth error response
+        const userRes = UserRes();
+        http.setNextResponse(`patch https://example.com/accounts/v1/users/current`, userRes);
+
+        // post and verify response
+        const res = await client.patch<Auth.Api.User<UserRoles>>(
+          "/accounts/v1/users/current",
+          userRes.data.data
+        );
+        expect(res).toMatchObject(userRes.data);
+      });
+    });
+
+    describe("delete", () => {
+      // Set credentials before each test
+      beforeEach(() => {
+        (client as any).session = { ...creds };
+      });
+
+      test("returns a response", async () => {
+        // Set the auth error response
+        http.setNextResponse(`delete https://example.com/accounts/v1/users/current`, {
+          status: 200,
+          headers: {},
+          config: {},
+          data: { t: "null", data: null },
+        });
+
+        // post and verify response
+        const res = await client.delete("/accounts/v1/users/current");
+        expect(res).toMatchObject({ t: "null", data: null });
       });
     });
   });
