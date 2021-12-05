@@ -274,6 +274,21 @@ export class Client {
     }
   }
 
+  /** get an API result */
+  public async get<T>(
+    endpoint: string,
+    params?: Api.Client.CollectionParams
+  ): Promise<Exclude<Api.Response<T>, Api.ErrorResponse>> {
+    const res = await this.call<T>("get", endpoint, {
+      params: params ? this.condenseParams(params) : {},
+    });
+    if (res.data.t === "error") {
+      throw this.inflateError(res.data);
+    } else {
+      return res.data;
+    }
+  }
+
   /**
    * Use the current session to make the given HTTP call to the API and return to the result. This
    * method automatically tries to refresh the session if it receives a 401 for a given call. If
@@ -283,7 +298,7 @@ export class Client {
     method: HttpMethods,
     endpoint: string,
     _req: SimpleHttpClientRequestConfig = {}
-  ): Promise<SimpleHttpClientResponseInterface<T | Api.ErrorResponse>> {
+  ): Promise<SimpleHttpClientResponseInterface<Api.Response<T>>> {
     // Normalize any incoming authorization header and combine with existing auth info
     const incomingAuth = Object.entries(_req.headers || {}).find(
       e => e[0].toLowerCase() === "authorization"
@@ -320,9 +335,9 @@ export class Client {
     };
 
     // Try the call
-    const res = await this.http.request<T | Api.ErrorResponse>(req);
+    const res = await this.http.request<Api.Response<T>>(req);
 
-    // If we got a success response, if we don't have an active session, or if the error is not a
+    // If we got a success response, or if we don't have an active session, or if the error is not a
     // 401, then return the response
     if (res.status < 300 || !this.session || res.status !== 401) {
       return res;
@@ -339,7 +354,7 @@ export class Client {
     // If the refresh call did work, then try the original call again with the new session and just
     // return whatever the response is
     req.headers.Authorization = authHeader.replace(/Bearer [^,]+/, `Bearer ${this.session.token}`);
-    return await this.http.request<T>(req);
+    return await this.http.request<Api.Response<T>>(req);
   }
 
   /** Refresh an active session */
@@ -428,5 +443,48 @@ export class Client {
     );
 
     return state === "raw" ? error : { status: "error", error };
+  }
+
+  /**
+   * Condense a complex array of parameters into a flat set of key-value pairs. E.g:
+   *
+   * ```
+   * const params = this.condenseParams({
+   *   pg: {
+   *     size: 5,
+   *     cursor: "abcde==",
+   *   }
+   * })
+   *
+   * // params is equal to:
+   * {
+   *   "pg[size]": 5,
+   *   "pg[cursor]": "abcde==",
+   * }
+   *
+   */
+  protected condenseParams(p: any): { [k: string]: string | number } {
+    const params: { [k: string]: string | number } = {};
+
+    // Create the function that will do the work
+    const condense = (key: string, obj: any) => {
+      if (obj) {
+        if (typeof obj === "string" || typeof obj === "number") {
+          params[key] = obj;
+        } else if (typeof obj === "object") {
+          for (const k in obj) {
+            condense(`${key}[${k}]`, obj[k]);
+          }
+        }
+      }
+    };
+
+    // Now kick us off
+    for (const k in p) {
+      condense(k, p[k]);
+    }
+
+    // And return the result
+    return params;
   }
 }
