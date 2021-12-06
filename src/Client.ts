@@ -107,11 +107,13 @@ export class Client {
           name,
           email,
           password,
+          passwordConf,
           state,
           referrer: this.clientId,
         },
       },
     });
+    this.log.debug(`Got response: ${JSON.stringify(res, undefined, 2)}`);
 
     // If we got an error, throw
     if (res.data.t === "error") {
@@ -151,6 +153,7 @@ export class Client {
         },
       },
     });
+    this.log.debug(`Got response: ${JSON.stringify(res, undefined, 2)}`);
 
     // If we got an error....
     if (res.data.t === "error") {
@@ -210,6 +213,7 @@ export class Client {
         },
       },
     });
+    this.log.debug(`Got response: ${JSON.stringify(res, undefined, 2)}`);
 
     // If we got an error....
     if (res.data.t === "error") {
@@ -249,7 +253,10 @@ export class Client {
         baseURL: this.baseUrl,
         url: "/accounts/v1/sessions/logout",
         throwErrors: false,
-        headers: { Authorization: `${this.authBasic},Bearer ${this.session.token}` },
+        headers: {
+          Authorization: `${this.authBasic},Bearer session:${this.session.token}`,
+          "Content-Type": "application/json",
+        },
       });
       this.log.debug(`Got response from logout endpoint`);
 
@@ -536,7 +543,7 @@ export class Client {
     const authHeader =
       this.authBasic +
       (incomingAuth && `,${incomingAuth[1]}`) +
-      (this.session && `,Bearer ${this.session.token}`);
+      (this.session && `,Bearer session:${this.session.token}`);
 
     // Also normalize the content-type header
     const incomingContent = Object.entries(_req.headers || {}).find(
@@ -563,6 +570,7 @@ export class Client {
 
     // Try the call
     const res = await this.http.request<Api.Response<T>>(req);
+    this.log.debug(`Got response: ${JSON.stringify(res, undefined, 2)}`);
 
     // If we got a success response, or if we don't have an active session, or if the error is not a
     // 401, then return the response
@@ -580,7 +588,10 @@ export class Client {
 
     // If the refresh call did work, then try the original call again with the new session and just
     // return whatever the response is
-    req.headers.Authorization = authHeader.replace(/Bearer [^,]+/, `Bearer ${this.session.token}`);
+    req.headers.Authorization = authHeader.replace(
+      /Bearer [^,]+/,
+      `Bearer session:${this.session.token}`
+    );
     return await this.http.request<Api.Response<T>>(req);
   }
 

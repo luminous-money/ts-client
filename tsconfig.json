@@ -3,8 +3,9 @@
     "target": "es6",
     "module": "commonjs",
     "lib": ["es6"],
+    "declaration": true,
     "outDir": "./dist/",
-    "rootDir": "./",
+    "rootDir": "./src",
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
@@ -18,5 +19,5 @@
     "noErrorTruncation": true,
     "types": ["node"]
   },
-  "include": ["src/**/*.ts", "run/**/*.ts"]
+  "include": ["src/**/*.ts"]
 }
