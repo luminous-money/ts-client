@@ -183,7 +183,7 @@ describe("Client", () => {
         expect(req.url).toMatch(/\/sessions\/logout$/);
         const auth = req.headers && (req.headers.Authorization || req.headers.authorization);
         expect(auth).toBeDefined();
-        expect(auth).toMatch(new RegExp(`^Basic [^,]+,Bearer ${creds.token}$`));
+        expect(auth).toMatch(new RegExp(`^Basic [^,]+,Bearer session:${creds.token}$`));
       });
 
       test("throws on error response", async () => {
