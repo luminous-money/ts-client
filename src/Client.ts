@@ -22,6 +22,9 @@ export class Client {
   /** Shorthand auth basic string for API calls */
   protected authBasic: string;
 
+  /** An optional set of headers that can be added to every request */
+  public requestHeaders: { [k: string]: string } = {};
+
   public constructor(
     /** The client id to use for the connection */
     protected clientId: string,
@@ -98,6 +101,7 @@ export class Client {
       url: "/accounts/v1/users",
       throwErrors: false,
       headers: {
+        ...this.requestHeaders,
         Authorization: this.authBasic,
         "Content-Type": "application/json",
       },
@@ -141,6 +145,7 @@ export class Client {
       url: "/accounts/v1/sessions/login/password",
       throwErrors: false,
       headers: {
+        ...this.requestHeaders,
         Authorization: this.authBasic,
         "Content-Type": "application/json",
       },
@@ -202,6 +207,7 @@ export class Client {
       url: "/accounts/v1/sessions/login/totp",
       throwErrors: false,
       headers: {
+        ...this.requestHeaders,
         Authorization: this.authBasic,
         "Content-Type": "application/json",
       },
@@ -254,6 +260,7 @@ export class Client {
         url: "/accounts/v1/sessions/logout",
         throwErrors: false,
         headers: {
+          ...this.requestHeaders,
           Authorization: `${this.authBasic},Bearer session:${this.session.token}`,
           "Content-Type": "application/json",
         },
@@ -561,6 +568,7 @@ export class Client {
       baseURL: this.baseUrl,
       url: endpoint,
       headers: {
+        ...this.requestHeaders,
         ..._req.headers,
         Authorization: authHeader,
         "Content-Type": contentHeader,
@@ -612,6 +620,7 @@ export class Client {
       baseURL: this.baseUrl,
       url: "/accounts/v1/sessions/refresh",
       headers: {
+        ...this.requestHeaders,
         Authorization: this.authBasic,
         "Content-Type": "application/json",
       },
