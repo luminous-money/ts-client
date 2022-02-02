@@ -617,8 +617,8 @@ export class Client {
       },
       data: {
         data: {
-          t: "refresh",
-          refreshToken: this.session.refresh,
+          t: "refresh-tokens",
+          token: this.session.refresh,
         },
       },
       throwErrors: false,
