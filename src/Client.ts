@@ -651,10 +651,15 @@ export class Client {
 
   /** Accepts a string and returns the base64 representation of it */
   protected toBase64(str: string): string {
-    if (Buffer as any) {
-      return (Buffer as any).from(str, "utf8").toString("base64");
+    if (Buffer) {
+      return Buffer.from(str, "utf8").toString("base64");
+    } else if (btoa) {
+      return btoa(str);
     } else {
-      return (btoa as any)(str);
+      throw new Error(
+        `Expecting either Buffer or btoa to exist in global space, but neither does. Is this a ` +
+          `non-standard environment?`
+      );
     }
   }
 

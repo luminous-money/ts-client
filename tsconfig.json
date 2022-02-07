@@ -16,8 +16,7 @@
     "noFallthroughCasesInSwitch": true,
     "moduleResolution": "node",
     "baseUrl": "./",
-    "noErrorTruncation": true,
-    "types": ["node"]
+    "noErrorTruncation": true
   },
   "include": ["src/**/*.ts"]
 }

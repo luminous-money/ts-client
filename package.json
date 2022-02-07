@@ -1,13 +1,14 @@
 {
   "name": "@luminous-money/client",
-  "version": "1.0.0-beta3",
+  "version": "1.0.0-beta4",
   "description": "The API client for the Luminous Money system",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
     "build": "rm -Rf dist; npx -p typescript tsc",
+    "docgen": "npx typedoc src/index.ts --sort visibility --sort source-order",
     "test": "jest",
-    "prepublishOnly": "rm -Rf dist; npx -p typescript tsc"
+    "prepublishOnly": "rm -Rf dist; npx tsc && npm run docgen"
   },
   "repository": {
     "type": "git",
@@ -27,10 +28,10 @@
   },
   "homepage": "https://github.com/luminous-money/ts-client#readme",
   "dependencies": {
-    "@luminous-money/types": "^1.0.0-beta3",
-    "@wymp/http-errors": "^1.8.0",
-    "@wymp/ts-simple-interfaces": "^0.5.3",
-    "@wymp/types": "^0.2.0-rc1"
+    "@luminous-money/types": "^1.0.0-beta4",
+    "@wymp/http-errors": "^2.0.0",
+    "@wymp/ts-simple-interfaces": "^0.5.4",
+    "@wymp/types": "^0.2.0-rc3"
   },
   "devDependencies": {
     "@types/jest": "^27.0.2",
@@ -42,6 +43,7 @@
     "pretty-quick": "^3.1.1",
     "ts-jest": "^27.0.0",
     "ts-node": "^9.1.1",
+    "typedoc": "^0.22.11",
     "typescript": "^4.4.4"
   },
   "prettier": {
