@@ -651,9 +651,9 @@ export class Client {
 
   /** Accepts a string and returns the base64 representation of it */
   protected toBase64(str: string): string {
-    if (Buffer) {
+    if (typeof Buffer !== "undefined") {
       return Buffer.from(str, "utf8").toString("base64");
-    } else if (btoa) {
+    } else if (typeof btoa !== "undefined") {
       return btoa(str);
     } else {
       throw new Error(
