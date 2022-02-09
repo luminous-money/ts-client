@@ -67,7 +67,9 @@ use types that are defined further below in the [Type Definitions](#type-definit
 
 **`createUser(name: string, email: string, password: string, passwordConf: string): Promise<void>`** -
 Creates a new user, returning an active session for the created user (assuming the creation is
-successful).
+successful). If unsuccessful, throws and `HttpError` containing detailed information about the
+failure (via the `obstructions` array). You may use `HttpError.isHttpError(e)` to determine
+whether the error thrown does indeed contain the additional information.
 
 **`login(email: string, password: string): Promise<LoginResult>`** - Takes the user's email and
 password and attempts to obtain a session token with it.
@@ -79,8 +81,8 @@ via this method. This method should return either success or error (not another 
 **`logout(): Promise<void>`** - If the user is logged in, this submits a request to invalidate their
 current credentials and returns true. If we don't have any credentials saved, it simply returns true.
 
-**`loggedIn(): Promise<boolean>`** - If the user is logged or their credentials are expired, returns
-false. If they are logged in with valid credentials, returns true.
+**`loggedIn(): Promise<boolean>`** - If the user is logged out or their credentials are expired,
+returns false. If they are logged in with valid credentials, returns true.
 
 
 ##### Data Methods

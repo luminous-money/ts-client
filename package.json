@@ -1,6 +1,6 @@
 {
   "name": "@luminous-money/client",
-  "version": "1.0.0-beta5",
+  "version": "1.0.0-beta6",
   "description": "The API client for the Luminous Money system",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

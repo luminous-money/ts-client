@@ -264,6 +264,7 @@ export class Client {
           Authorization: `${this.authBasic},Bearer session:${this.session.token}`,
           "Content-Type": "application/json",
         },
+        data: {},
       });
       this.log.debug(`Got response from logout endpoint`);
 
