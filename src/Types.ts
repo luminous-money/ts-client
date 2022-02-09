@@ -6,10 +6,15 @@ export type ErrorResult = { status: "error"; error: HttpError };
 
 /**
  * The result of a login attempt. This can be either "success", in which case the client can be
- * understood to be "authenticated"; "error", in which case there was an error logging in; or "2fa",
- * indicating that the user should be prompted for a 2fa TOTP.
+ * understood to be "authenticated"; "error", in which case there was an error logging in; "2fa",
+ * indicating that the user should be prompted for a 2fa TOTP; or "email", indicating that the
+ * user should check their email to complete login via email link.
  */
-export type LoginResult = { status: "success" } | { status: "2fa"; code: string } | ErrorResult;
+export type LoginResult =
+  | { status: "success" }
+  | { status: "email" }
+  | { status: "2fa"; code: string }
+  | ErrorResult;
 
 /**
  * A `NextableResponse` is a packet of information that makes it easy to go back and forth through

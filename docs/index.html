@@ -63,7 +63,9 @@ use types that are defined further below in the <a href="#type-definitions">Type
 </a>
 <p><strong><code>createUser(name: string, email: string, password: string, passwordConf: string): Promise&lt;void&gt;</code></strong> -
 Creates a new user, returning an active session for the created user (assuming the creation is
-successful).</p>
+successful). If unsuccessful, throws and <code>HttpError</code> containing detailed information about the
+failure (via the <code>obstructions</code> array). You may use <code>HttpError.isHttpError(e)</code> to determine
+whether the error thrown does indeed contain the additional information.</p>
 <p><strong><code>login(email: string, password: string): Promise&lt;LoginResult&gt;</code></strong> - Takes the user&#39;s email and
 password and attempts to obtain a session token with it.</p>
 <p><strong><code>totp(code: string, totp: string): Promise&lt;LoginResult&gt;</code></strong> - If the <code>login</code> method returned a
@@ -71,8 +73,8 @@ result with status <code>2fa</code>, then you should ask the user for a TOTP fro
 via this method. This method should return either success or error (not another 2fa).</p>
 <p><strong><code>logout(): Promise&lt;void&gt;</code></strong> - If the user is logged in, this submits a request to invalidate their
 current credentials and returns true. If we don&#39;t have any credentials saved, it simply returns true.</p>
-<p><strong><code>loggedIn(): Promise&lt;boolean&gt;</code></strong> - If the user is logged or their credentials are expired, returns
-false. If they are logged in with valid credentials, returns true.</p>
+<p><strong><code>loggedIn(): Promise&lt;boolean&gt;</code></strong> - If the user is logged out or their credentials are expired,
+returns false. If they are logged in with valid credentials, returns true.</p>
 
 <a href="#data-methods" id="data-methods" style="color: inherit; text-decoration: none;">
   <h5>Data Methods</h5>

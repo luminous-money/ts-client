@@ -162,17 +162,26 @@ export class Client {
 
     // If we got an error....
     if (res.data.t === "error") {
-      if (res.status === 401) {
+      // If it's a user-facing error, return it as a response
+      if (
+        res.data.error.code === "INCORRECT-PASSWORD" ||
+        res.data.error.code === "EMAIL-NOT-FOUND"
+      ) {
         this.log.warning(`Failed login. Response body: ${JSON.stringify(res.data)}`);
         return this.inflateError(res.data, "dressed");
       }
+
+      // Otherwise, throw it
       throw this.inflateError(res.data);
     }
 
-    // Otherwise, if we got a step...
-    const data = <Auth.Api.Authn.Session | Auth.Api.Authn.StepResponse>res.data.data;
-    if (data.t === "step") {
-      // Make sure it's one we know how to handle (if not, throw)
+    // Otherwise, process response
+    const data = <Auth.Api.Authn.Session | Auth.Api.Authn.StepResponse | null>res.data.data;
+    if (data === null) {
+      // If it's null, then it was an email request. Return that.
+      return { status: "email" };
+    } else if (data.t === "step") {
+      // If it's a step, make sure it's one we know how to handle (if not, throw)
       if (data.step !== "totp") {
         throw new Error(
           `Error with Luminous API: Returned unexpected step '${data.step}', which we ` +
@@ -185,11 +194,11 @@ export class Client {
         status: "2fa",
         code: data.state,
       };
+    } else {
+      // Otherwise, we must have gotten a session. Store it and return success.
+      this.storeSession(data);
+      return { status: "success" };
     }
-
-    // Otherwise, we must have gotten a session. Store it and return success.
-    this.storeSession(data);
-    return { status: "success" };
   }
 
   /**
