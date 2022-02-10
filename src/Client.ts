@@ -327,7 +327,15 @@ export class Client {
   public async get<T>(
     endpoint: string,
     params?: Api.Client.CollectionParams
-  ): Promise<Exclude<Api.Response<T>, Api.ErrorResponse>> {
+  ): Promise<
+    T extends null
+      ? Api.NullResponse<unknown>
+      : T extends Array<infer O>
+      ? Api.CollectionResponse<O>
+      : T extends object
+      ? Api.SingleResponse<T>
+      : Api.Response<T>
+  > {
     const res = await this.call<T>("get", endpoint, {
       params: params ? this.condenseParams(params) : {},
     });
@@ -335,7 +343,15 @@ export class Client {
     if (data.t === "error") {
       throw this.inflateError(data);
     } else {
-      return data;
+      return <
+        T extends null
+          ? Api.NullResponse<unknown>
+          : T extends Array<infer O>
+          ? Api.CollectionResponse<O>
+          : T extends object
+          ? Api.SingleResponse<T>
+          : Api.Response<T>
+      >data;
     }
   }
 
@@ -343,16 +359,29 @@ export class Client {
   public async post<T, I = T>(
     endpoint: string,
     data?: I
-  ): Promise<Exclude<Api.Response<T>, Api.ErrorResponse>> {
+  ): Promise<
+    T extends null
+      ? Api.NullResponse<unknown>
+      : T extends Array<infer O>
+      ? Api.CollectionResponse<O>
+      : T extends object
+      ? Api.SingleResponse<T>
+      : Api.Response<T>
+  > {
     const res = await this.call<T>("post", endpoint, data && { data: { data } });
     const resData = res.data;
     if (resData.t === "error") {
       throw this.inflateError(resData);
     } else {
-      if (resData.t === "collection" || resData.t === "null") {
-        throw new Error(`Unexpected response type from API: '${resData.t}'. Expecting 'single'.`);
-      }
-      return resData;
+      return <
+        T extends null
+          ? Api.NullResponse<unknown>
+          : T extends Array<infer O>
+          ? Api.CollectionResponse<O>
+          : T extends object
+          ? Api.SingleResponse<T>
+          : Api.Response<T>
+      >resData;
     }
   }
 
@@ -360,27 +389,58 @@ export class Client {
   public async patch<T, I = T>(
     endpoint: string,
     data: Partial<I>
-  ): Promise<Exclude<Api.Response<T>, Api.ErrorResponse>> {
+  ): Promise<
+    T extends null
+      ? Api.NullResponse<unknown>
+      : T extends Array<infer O>
+      ? Api.CollectionResponse<O>
+      : T extends object
+      ? Api.SingleResponse<T>
+      : Api.Response<T>
+  > {
     const res = await this.call<T>("patch", endpoint, { data: { data } });
     const resData = res.data;
     if (resData.t === "error") {
       throw this.inflateError(resData);
     } else {
-      if (resData.t === "collection" || resData.t === "null") {
-        throw new Error(`Unexpected response type from API: '${resData.t}'. Expecting 'single'.`);
-      }
-      return resData;
+      return <
+        T extends null
+          ? Api.NullResponse<unknown>
+          : T extends Array<infer O>
+          ? Api.CollectionResponse<O>
+          : T extends object
+          ? Api.SingleResponse<T>
+          : Api.Response<T>
+      >resData;
     }
   }
 
   /** delete data in the API */
-  public async delete<T>(endpoint: string): Promise<Api.Response<T>> {
+  public async delete<T = null>(
+    endpoint: string
+  ): Promise<
+    T extends null
+      ? Api.NullResponse<unknown>
+      : T extends Array<infer O>
+      ? Api.CollectionResponse<O>
+      : T extends object
+      ? Api.SingleResponse<T>
+      : Api.Response<T>
+  > {
     const res = await this.call<T>("delete", endpoint);
     const resData = res.data;
     if (resData.t === "error") {
       throw this.inflateError(resData);
     } else {
-      return resData;
+      return <
+        T extends null
+          ? Api.NullResponse<unknown>
+          : T extends Array<infer O>
+          ? Api.CollectionResponse<O>
+          : T extends object
+          ? Api.SingleResponse<T>
+          : Api.Response<T>
+      >resData;
     }
   }
 
@@ -536,7 +596,7 @@ export class Client {
     return {
       endpoint,
       params,
-      response: res,
+      response: <Api.CollectionResponse<T>>res,
     };
   }
 

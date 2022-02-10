@@ -227,22 +227,24 @@ describe("Client", () => {
         expect(storage.getItem(storageKey)).toBe(JSON.stringify(creds));
       });
 
-      test("returns error on auth error", async () => {
-        // Set the response to our session
-        http.setNextResponse(
-          "post https://example.com/accounts/v1/sessions/login/password",
-          Http401Res()
-        );
+      ["INCORRECT-PASSWORD", "EMAIL-NOT-FOUND"].map(code => {
+        test(`returns error when API returns error with code '${code}'`, async () => {
+          // Set the response to our session
+          http.setNextResponse(
+            "post https://example.com/accounts/v1/sessions/login/password",
+            Http401Res({ code })
+          );
 
-        // Try to log in
-        const result = await client.login("me@example.com", "abcde12345");
+          // Try to log in
+          const result = await client.login("me@example.com", "abcde12345");
 
-        // Verify error response
-        expect(result.status).toBe("error");
-        if (result.status === "error") {
-          expect(result.error).toBeDefined();
-          expect(result.error.message).toMatch(/Invalid login/);
-        }
+          // Verify error response
+          expect(result.status).toBe("error");
+          if (result.status === "error") {
+            expect(result.error).toBeDefined();
+            expect(result.error.subcode).toBe(code);
+          }
+        });
       });
 
       test("throws error on non-auth error", async () => {
