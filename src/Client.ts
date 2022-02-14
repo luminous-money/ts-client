@@ -709,6 +709,14 @@ export class Client {
       return true;
     }
 
+    // If the refresh token is expired, clear the session before returning the error so we don't
+    // try to use it again
+    if (res.data.error.code === "REFRESH-TOKEN-EXPIRED") {
+      this.log.info(`Refresh token expired. Destroying session.`);
+      this.storage.removeItem(this.storageKey);
+      this.session = null;
+    }
+
     // Otherwise, return the response
     return <SimpleHttpClientResponseInterface<Api.ErrorResponse>>res;
   }
