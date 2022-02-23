@@ -24,6 +24,7 @@ export type LoginResult =
 export type NextableResponse<T = unknown> = {
   endpoint: string;
   params?: Api.Client.CollectionParams;
+  headers: { [k: string]: string };
   response: Api.CollectionResponse<T>;
 };
 

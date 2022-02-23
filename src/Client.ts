@@ -326,7 +326,8 @@ export class Client {
   /** get an API result */
   public async get<T>(
     endpoint: string,
-    params?: Api.Client.CollectionParams
+    params?: Api.Client.CollectionParams,
+    headers: { [k: string]: string } = {}
   ): Promise<
     T extends null
       ? Api.NullResponse<unknown>
@@ -338,6 +339,7 @@ export class Client {
   > {
     const res = await this.call<T>("get", endpoint, {
       params: params ? this.condenseParams(params) : {},
+      headers,
     });
     const data = res.data;
     if (data.t === "error") {
@@ -358,7 +360,8 @@ export class Client {
   /** post data to the API */
   public async post<T, I = T>(
     endpoint: string,
-    data?: I
+    data?: I,
+    headers: { [k: string]: string } = {}
   ): Promise<
     T extends null
       ? Api.NullResponse<unknown>
@@ -368,7 +371,7 @@ export class Client {
       ? Api.SingleResponse<T>
       : Api.Response<T>
   > {
-    const res = await this.call<T>("post", endpoint, data && { data: { data } });
+    const res = await this.call<T>("post", endpoint, data && { data: { data }, headers });
     const resData = res.data;
     if (resData.t === "error") {
       throw this.inflateError(resData);
@@ -388,7 +391,8 @@ export class Client {
   /** update data in the API */
   public async patch<T, I = T>(
     endpoint: string,
-    data: Partial<I>
+    data: Partial<I>,
+    headers: { [k: string]: string } = {}
   ): Promise<
     T extends null
       ? Api.NullResponse<unknown>
@@ -398,7 +402,7 @@ export class Client {
       ? Api.SingleResponse<T>
       : Api.Response<T>
   > {
-    const res = await this.call<T>("patch", endpoint, { data: { data } });
+    const res = await this.call<T>("patch", endpoint, { data: { data }, headers });
     const resData = res.data;
     if (resData.t === "error") {
       throw this.inflateError(resData);
@@ -417,7 +421,8 @@ export class Client {
 
   /** delete data in the API */
   public async delete<T = null>(
-    endpoint: string
+    endpoint: string,
+    headers: { [k: string]: string } = {}
   ): Promise<
     T extends null
       ? Api.NullResponse<unknown>
@@ -427,7 +432,7 @@ export class Client {
       ? Api.SingleResponse<T>
       : Api.Response<T>
   > {
-    const res = await this.call<T>("delete", endpoint);
+    const res = await this.call<T>("delete", endpoint, { headers });
     const resData = res.data;
     if (resData.t === "error") {
       throw this.inflateError(resData);
@@ -453,16 +458,18 @@ export class Client {
    */
   public next<T>(
     endpoint: string,
-    params?: Api.Client.CollectionParams
+    params?: Api.Client.CollectionParams,
+    headers?: { [k: string]: string }
   ): Promise<NextableResponse<T> | null>;
   public next<T>(nextable: NextableResponse<T>): Promise<NextableResponse<T> | null>;
   public next<T>(
     endpointOrNextable: string | NextableResponse<T>,
-    _params?: Api.Client.CollectionParams
+    params?: Api.Client.CollectionParams,
+    headers?: { [k: string]: string }
   ): Promise<NextableResponse<T> | null> {
     return typeof endpointOrNextable === "string"
-      ? this.nextOrPrev<T>(endpointOrNextable, _params, "nextCursor")
-      : this.nextOrPrev<T>(endpointOrNextable, undefined, "nextCursor");
+      ? this.nextOrPrev<T>(endpointOrNextable, params, headers, "nextCursor")
+      : this.nextOrPrev<T>(endpointOrNextable, undefined, undefined, "nextCursor");
   }
 
   /**
@@ -474,16 +481,18 @@ export class Client {
    */
   public async prev<T>(
     endpoint: string,
-    params?: Api.Client.CollectionParams
+    params?: Api.Client.CollectionParams,
+    headers?: { [k: string]: string }
   ): Promise<NextableResponse<T> | null>;
   public async prev<T>(nextable: NextableResponse<T>): Promise<NextableResponse<T> | null>;
   public async prev<T>(
     endpointOrNextable: string | NextableResponse<T>,
-    _params?: Api.Client.CollectionParams
+    params?: Api.Client.CollectionParams,
+    headers?: { [k: string]: string }
   ): Promise<NextableResponse<T> | null> {
     return typeof endpointOrNextable === "string"
-      ? this.nextOrPrev<T>(endpointOrNextable, _params, "prevCursor")
-      : this.nextOrPrev<T>(endpointOrNextable, undefined, "prevCursor");
+      ? this.nextOrPrev<T>(endpointOrNextable, params, headers, "prevCursor")
+      : this.nextOrPrev<T>(endpointOrNextable, undefined, undefined, "prevCursor");
   }
 
   /**
@@ -545,23 +554,28 @@ export class Client {
   protected async nextOrPrev<T>(
     endpoint: string,
     params: Api.Client.CollectionParams | undefined,
+    headers: { [k: string]: string } | undefined,
     cursorParam: "nextCursor" | "prevCursor"
   ): Promise<NextableResponse<T> | null>;
   protected async nextOrPrev<T>(
     nextable: NextableResponse<T>,
     params: undefined,
+    headers: undefined,
     cursorParam: "nextCursor" | "prevCursor"
   ): Promise<NextableResponse<T> | null>;
   protected async nextOrPrev<T>(
     endpointOrNextable: string | NextableResponse<T>,
     _params: Api.Client.CollectionParams | undefined,
+    _headers: { [k: string]: string } | undefined,
     cursorParam: "nextCursor" | "prevCursor"
   ): Promise<NextableResponse<T> | null> {
-    // Get the endpoint and params
+    // Get the endpoint, params and headers
     const endpoint =
       typeof endpointOrNextable === "string" ? endpointOrNextable : endpointOrNextable.endpoint;
     const params =
       (typeof endpointOrNextable === "string" ? _params : endpointOrNextable.params) || {};
+    const headers =
+      (typeof endpointOrNextable === "string" ? _headers : endpointOrNextable.headers) || {};
 
     // If we passed a NextableResponse, then we need to adjust the parameters to get the next page
     if (typeof endpointOrNextable !== "string") {
@@ -586,7 +600,7 @@ export class Client {
     }
 
     // Now make the call and return the result
-    const res = await this.get<T>(endpoint, params);
+    const res = await this.get<T>(endpoint, params, headers);
     if (res.t !== "collection") {
       throw new Error(
         `The 'next' method is only meant to handle collection responses. The call 'GET ` +
@@ -596,6 +610,7 @@ export class Client {
     return {
       endpoint,
       params,
+      headers,
       response: <Api.CollectionResponse<T>>res,
     };
   }

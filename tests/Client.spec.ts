@@ -509,6 +509,7 @@ describe("Client", () => {
   });
 
   describe("Data Methods", () => {
+    test.todo("Test ability to add headers to all requests");
     describe("Session Auto-Refresh", () => {
       const params: Array<[HttpMethods, Function]> = [
         ["get", (c: Client) => c.get("/accounts/v1/users/current")],
