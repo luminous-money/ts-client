@@ -263,34 +263,22 @@ export class Client {
 
       // Do the logout
       this.log.debug(`Calling API for logout`);
-      const res = await this.http.request<Api.Response>({
-        method: "post",
-        baseURL: this.baseUrl,
-        url: "/accounts/v1/sessions/logout",
-        throwErrors: false,
-        headers: {
-          ...this.requestHeaders,
-          Authorization: `${this.authBasic},Bearer session:${this.session.token}`,
-          "Content-Type": "application/json",
-        },
-        data: {},
-      });
+      const res = await this.call("post", "/accounts/v1/sessions/logout", {});
       this.log.debug(`Got response from logout endpoint`);
 
-      // Throw on errors
+      // Warn on errors, but proceed anyway, since we're just logging out
       if (res.data.t === "error") {
-        throw new Error(
-          `Error with Luminous API: Returned unexpected response on logout: ` +
+        this.log.warning(
+          `Error with Luminous API: Returned unexpected error response on logout: ` +
             JSON.stringify(res.data)
         );
+      } else {
+        this.log.notice(`Logout successful`);
+        this.log.debug(`Logout response string: ${JSON.stringify(res.data)}`);
       }
 
       // Clear the credentials from memory
       this.session = null;
-
-      // Log some info
-      this.log.notice(`Logout successful`);
-      this.log.debug(`Logout response string: ${JSON.stringify(res.data)}`);
     }
   }
 
