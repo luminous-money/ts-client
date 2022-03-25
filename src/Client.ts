@@ -812,6 +812,11 @@ export class Client {
       }
     };
 
+    // Handle filter first, if present
+    if (p.filter && typeof p.filter !== "string") {
+      p.filter = JSON.stringify(p.filter);
+    }
+
     // Now kick us off
     for (const k in p) {
       condense(k, p[k]);
