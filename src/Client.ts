@@ -346,63 +346,63 @@ export class Client {
   }
 
   /** post data to the API */
-  public async post<T, I = T>(
+  public async post<T extends { tx: unknown; rx: unknown }>(
     endpoint: string,
-    data?: I,
+    data?: T["tx"],
     headers: { [k: string]: string } = {}
   ): Promise<
-    T extends null
+    T["rx"] extends null
       ? Api.NullResponse<unknown>
-      : T extends Array<infer O>
+      : T["rx"] extends Array<infer O>
       ? Api.CollectionResponse<O>
-      : T extends object
-      ? Api.SingleResponse<T>
-      : Api.Response<T>
+      : T["rx"] extends object
+      ? Api.SingleResponse<T["rx"]>
+      : Api.Response<T["rx"]>
   > {
-    const res = await this.call<T>("post", endpoint, data && { data: { data }, headers });
+    const res = await this.call<T["rx"]>("post", endpoint, data && { data: { data }, headers });
     const resData = res.data;
     if (resData.t === "error") {
       throw this.inflateError(resData);
     } else {
       return <
-        T extends null
+        T["rx"] extends null
           ? Api.NullResponse<unknown>
-          : T extends Array<infer O>
+          : T["rx"] extends Array<infer O>
           ? Api.CollectionResponse<O>
-          : T extends object
-          ? Api.SingleResponse<T>
-          : Api.Response<T>
+          : T["rx"] extends object
+          ? Api.SingleResponse<T["rx"]>
+          : Api.Response<T["rx"]>
       >resData;
     }
   }
 
   /** update data in the API */
-  public async patch<T, I = T>(
+  public async patch<T extends { tx: unknown; rx: unknown }>(
     endpoint: string,
-    data: Partial<I>,
+    data: T["tx"],
     headers: { [k: string]: string } = {}
   ): Promise<
-    T extends null
+    T["rx"] extends null
       ? Api.NullResponse<unknown>
-      : T extends Array<infer O>
+      : T["rx"] extends Array<infer O>
       ? Api.CollectionResponse<O>
-      : T extends object
-      ? Api.SingleResponse<T>
-      : Api.Response<T>
+      : T["rx"] extends object
+      ? Api.SingleResponse<T["rx"]>
+      : Api.Response<T["rx"]>
   > {
-    const res = await this.call<T>("patch", endpoint, { data: { data }, headers });
+    const res = await this.call<T["rx"]>("patch", endpoint, { data: { data }, headers });
     const resData = res.data;
     if (resData.t === "error") {
       throw this.inflateError(resData);
     } else {
       return <
-        T extends null
+        T["rx"] extends null
           ? Api.NullResponse<unknown>
-          : T extends Array<infer O>
+          : T["rx"] extends Array<infer O>
           ? Api.CollectionResponse<O>
-          : T extends object
-          ? Api.SingleResponse<T>
-          : Api.Response<T>
+          : T["rx"] extends object
+          ? Api.SingleResponse<T["rx"]>
+          : Api.Response<T["rx"]>
       >resData;
     }
   }
