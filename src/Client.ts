@@ -622,7 +622,7 @@ export class Client {
     }
     const authHeader =
       this.authBasic +
-      (incomingAuth && `,${incomingAuth[1]}`) +
+      (incomingAuth ? `,${incomingAuth[1]}` : "") +
       (this.session && `,Bearer session:${this.session.token}`);
 
     // Also normalize the content-type header
