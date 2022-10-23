@@ -1,3 +1,17 @@
-#!/bin/sh
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
 
-npx pretty-quick --staged
+set -e
+
+if [ -z "$SKIP_TYPECHECKING" ]; then
+    npx tsc
+fi
+
+if [ -z "$SKIP_TESTS" ]; then
+    npm t
+fi
+
+if [ -z "$SKIP_LINTING" ]; then
+    npx pretty-quick --staged
+fi
+

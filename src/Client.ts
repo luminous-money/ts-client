@@ -258,16 +258,26 @@ export class Client {
   public async logout(): Promise<void> {
     this.log.debug(`Logging out`);
     if (this.session) {
-      // Clear creds from storage
-      this.storage.removeItem(this.storageKey);
+      // Create a function for the logout call, since we may need to try it again
+      const logout = async () => {
+        this.log.debug(`Calling API for logout`);
+        const res = await this.call("post", "/accounts/v1/sessions/logout", {});
+        this.log.debug(`Got response from logout endpoint`);
+        return res;
+      };
 
       // Do the logout
-      this.log.debug(`Calling API for logout`);
-      const res = await this.call("post", "/accounts/v1/sessions/logout", {});
-      this.log.debug(`Got response from logout endpoint`);
+      const res = await logout();
 
-      // Warn on errors, but proceed anyway, since we're just logging out
+      // Handle errors
       if (res.data.t === "error") {
+        // TODO: Handle errors like timeouts, rate limits, bad formatting, etc.
+        // For now, throw on straight 400 and 500 errors, but for the rest, just warn
+
+        if (res.status === 400 || res.status === 500) {
+          throw this.inflateError(<Api.ErrorResponse>res.data);
+        }
+
         this.log.warning(
           `Error with Luminous API: Returned unexpected error response on logout: ` +
             JSON.stringify(res.data)
@@ -277,8 +287,9 @@ export class Client {
         this.log.debug(`Logout response string: ${JSON.stringify(res.data)}`);
       }
 
-      // Clear the credentials from memory
+      // Clear the credentials from memory and the session from storage
       this.session = null;
+      this.storage.removeItem(this.storageKey);
     }
   }
 
@@ -359,7 +370,10 @@ export class Client {
       ? Api.SingleResponse<T["rx"]>
       : Api.Response<T["rx"]>
   > {
-    const res = await this.call<T["rx"]>("post", endpoint, data && { data: { data }, headers });
+    const res = await this.call<T["rx"]>("post", endpoint, {
+      ...(data && { data: { data } }),
+      headers,
+    });
     const resData = res.data;
     if (resData.t === "error") {
       throw this.inflateError(resData);

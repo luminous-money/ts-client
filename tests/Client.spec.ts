@@ -192,7 +192,7 @@ describe("Client", () => {
         // Set an error response
         http.setNextResponse("post https://example.com/accounts/v1/sessions/logout", Http500Res());
 
-        await expect(() => client.logout()).rejects.toThrow("unexpected response on logout");
+        await expect(() => client.logout()).rejects.toThrow("Something went wrong");
       });
     });
 
@@ -634,10 +634,10 @@ describe("Client", () => {
         http.setNextResponse(`post https://example.com/accounts/v1/users`, userRes);
 
         // post and verify response
-        const res = await client.post<Auth.Api.User<UserRoles>>(
-          "/accounts/v1/users",
-          userRes.data.data
-        );
+        const res = await client.post<{
+          tx: Auth.Api.User<UserRoles>;
+          rx: Auth.Api.User<UserRoles>;
+        }>("/accounts/v1/users", userRes.data.data);
         expect(res).toMatchObject(userRes.data);
       });
     });
@@ -654,10 +654,10 @@ describe("Client", () => {
         http.setNextResponse(`patch https://example.com/accounts/v1/users/current`, userRes);
 
         // post and verify response
-        const res = await client.patch<Auth.Api.User<UserRoles>>(
-          "/accounts/v1/users/current",
-          userRes.data.data
-        );
+        const res = await client.patch<{
+          tx: Auth.Api.User<UserRoles>;
+          rx: Auth.Api.User<UserRoles>;
+        }>("/accounts/v1/users/current", userRes.data.data);
         expect(res).toMatchObject(userRes.data);
       });
     });
