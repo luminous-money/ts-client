@@ -359,7 +359,7 @@ export class Client {
   /** post data to the API */
   public async post<T extends { tx: unknown; rx: unknown }>(
     endpoint: string,
-    data?: T["tx"],
+    data: T["tx"],
     headers: { [k: string]: string } = {}
   ): Promise<
     T["rx"] extends null
@@ -371,7 +371,7 @@ export class Client {
       : Api.Response<T["rx"]>
   > {
     const res = await this.call<T["rx"]>("post", endpoint, {
-      ...(data && { data: { data } }),
+      ...{ data: { data: data || null } },
       headers,
     });
     const resData = res.data;

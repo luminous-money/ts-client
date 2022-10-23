@@ -513,7 +513,7 @@ describe("Client", () => {
     describe("Session Auto-Refresh", () => {
       const params: Array<[HttpMethods, Function]> = [
         ["get", (c: Client) => c.get("/accounts/v1/users/current")],
-        ["post", (c: Client) => c.post("/accounts/v1/users/current")],
+        ["post", (c: Client) => c.post("/accounts/v1/users/current", null)],
         ["patch", (c: Client) => c.patch("/accounts/v1/users/current", {})],
         ["delete", (c: Client) => c.delete("/accounts/v1/users/current")],
       ];
